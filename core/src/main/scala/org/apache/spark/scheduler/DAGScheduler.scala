@@ -719,6 +719,18 @@ class DAGScheduler(
     submitWaitingStages()
   }
 
+  private def haoGenRddDep(rdd:RDD[_], jobId:Int, rddNames:scala.collection.mutable.Map[Int, String]):Unit = {
+      rddNames(rdd.id) = "|||%s||%s|||".format(rdd.getClass.getSimpleName, rdd.name)
+      rdd.dependencies.foreach {
+        case dep:ShuffleDependency[_, _, _] =>
+              logInfo("HAO RDD DEPENDENCY: JobId=%d %d => %d".format(jobId, rdd.id, dep.rdd.id))
+              haoGenRddDep(dep.rdd, jobId, rddNames)
+        case dep:Dependency[_] =>
+              logInfo("HAO RDD DEPENDENCY: JobId=%d %d -> %d".format(jobId, rdd.id, dep.rdd.id))
+              haoGenRddDep(dep.rdd, jobId, rddNames)
+      }
+  }
+
   private[scheduler] def handleJobSubmitted(jobId: Int,
       finalRDD: RDD[_],
       func: (TaskContext, Iterator[_]) => _,
@@ -728,6 +740,11 @@ class DAGScheduler(
       listener: JobListener,
       properties: Properties = null)
   {
+    logInfo("HAO JOB: JobId=%d finalRDD=%d".format(jobId, finalRDD.id))
+    val rddNames = scala.collection.mutable.Map[Int, String]()
+    haoGenRddDep(finalRDD, jobId, rddNames)
+    logInfo("HAO RDD NAME: JobId=" + jobId + rddNames.map(pair=>" %d=%s".format(pair._1, pair._2)).reduce(_ + _))
+
     var finalStage: Stage = null
     try {
       // New stage creation may throw an exception if, for example, jobs are run on a
