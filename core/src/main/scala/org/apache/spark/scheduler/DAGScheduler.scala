@@ -744,6 +744,13 @@ class DAGScheduler(
     val rddNames = scala.collection.mutable.Map[Int, String]()
     haoGenRddDep(finalRDD, jobId, rddNames)
     logInfo("HAO RDD NAME: JobId=" + jobId + rddNames.map(pair=>" %d=%s".format(pair._1, pair._2)).reduce(_ + _))
+    val cacheLog = new StringBuilder("HAO RDD CACHE: JobId=")
+    cacheLog.append(jobId)
+    sc.getPersistentRDDs.foreach(pair=>{
+      cacheLog.append("##")
+      cacheLog.append(pair._1)
+    })
+    logInfo(cacheLog.toString)
 
     var finalStage: Stage = null
     try {
