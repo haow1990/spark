@@ -720,7 +720,7 @@ class DAGScheduler(
   }
 
   private def haoGenRddDep(rdd:RDD[_], jobId:Int, rddNames:scala.collection.mutable.Map[Int, String]):Unit = {
-      rddNames(rdd.id) = "|||%s||%s|||".format(rdd.getClass.getSimpleName, rdd.name)
+      rddNames(rdd.id) = "|||%s||%s|||".format(rdd.toString, rdd.name)
       rdd.dependencies.foreach {
         case dep:ShuffleDependency[_, _, _] =>
               logInfo("HAO RDD DEPENDENCY: JobId=%d %d => %d".format(jobId, rdd.id, dep.rdd.id))
@@ -795,6 +795,7 @@ class DAGScheduler(
     val jobId = activeJobForStage(stage)
     if (jobId.isDefined) {
       logDebug("submitStage(" + stage + ")")
+      logInfo("HAO STAGE: JobId=%d StageId=%d FinalRDD=%d".format(jobId.get, stage.id, stage.rdd.id))
       if (!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {
         val missing = getMissingParentStages(stage).sortBy(_.id)
         logDebug("missing: " + missing)
