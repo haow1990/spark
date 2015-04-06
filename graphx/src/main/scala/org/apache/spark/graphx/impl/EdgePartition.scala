@@ -83,12 +83,17 @@ class EdgePartition[
       Some(activeSet))
   }
 
-  def haoTrace() = {
-               logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
+  var pid = -1
+  def haoTrace(info:String, ppid:Int = -1) = {
+    if (ppid != -1) {
+      pid = ppid
+    }
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
   }
 
   /** Return a new `EdgePartition` with updates to vertex attributes specified in `iter`. */
@@ -101,17 +106,13 @@ class EdgePartition[
         newVertexAttrs(global2local(kv._1)) = kv._2
       } catch {
         case e:ArrayIndexOutOfBoundsException =>
-               val keys = global2local.keySet.iterator.mkString(",")
-               val values = global2local._values.iterator.mkString(",")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException(${kv._1}) keys:$keys => values:$values")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
-               logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
-               throw e
+          val keys = global2local.keySet.iterator.mkString(",")
+          val values = global2local._values.iterator.mkString(",")
+          logInfo(s"HAO ArrayIndexOutOfBoundsException(${kv._1}) keys:$keys => values:$values")
+          haoTrace("updateVertices")
+          throw e
         case e:Exception =>
-               throw e
+          throw e
       }
     }
     new EdgePartition(
