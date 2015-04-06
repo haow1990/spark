@@ -106,7 +106,10 @@ object EdgeRDD {
       iter.foreach { e =>
         builder.add(e.srcId, e.dstId, e.attr)
       }
-      Iterator((pid, builder.toEdgePartition))
+      val ep = builder.toEdgePartition
+        println("HAO EdgeRDD.fromEdges")
+        ep.haoTrace
+      Iterator((pid, ep))
     }
     EdgeRDD.fromEdgePartitions(edgePartitions)
   }
