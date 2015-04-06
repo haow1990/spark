@@ -57,6 +57,7 @@ class LDA private[mllib](
     computedModel: Broadcast[LDAModel] = null) {
     this(initializeCorpus(docs, numTopics, storageLevel, computedModel),
       numTopics, docs.first()._2.size, alpha, beta, alphaAS, storageLevel)
+    println("HAO-AIOB initialization completed")
   }
 
   // scalastyle:off
@@ -142,7 +143,7 @@ class LDA private[mllib](
   def saveModel(iter: Int = 1): LDAModel = {
     var termTopicCounter: RDD[(VertexId, VD)] = null
     for (iter <- 1 to iter) {
-      logInfo(s"Save TopicModel (Iteration $iter/$iter)")
+      println(s"Save TopicModel (Iteration $iter/$iter)")
       var previousTermTopicCounter = termTopicCounter
       gibbsSampling()
       val newTermTopicCounter = termVertices
@@ -169,10 +170,12 @@ class LDA private[mllib](
 
   def runGibbsSampling(iterations: Int): Unit = {
     for (iter <- 1 to iterations) {
+      println(s"HAO-AIOB runGibbsSampling $iter / $iterations started")
       // logInfo(s"Gibbs samplin perplexity $iter:                 ${perplexity}")
       // logInfo(s"Gibbs sampling (Iteration $iter/$iterations)")
       // val startedAt = System.nanoTime()
       gibbsSampling()
+      println(s"HAO-AIOB runGibbsSampling $iter / $iterations ended")
       // val endAt = System.nanoTime()
       // val useTime = (endAt - startedAt) / 1e9
       // logInfo(s"Gibbs sampling use time  $iter:              $useTime")
@@ -435,6 +438,7 @@ object LDA {
     numTopics: Int,
     storageLevel: StorageLevel,
     computedModel: Broadcast[LDAModel] = null): Graph[VD, ED] = {
+    println("HAO-AIOB initializeCorpus started")
     val edges = docs.mapPartitionsWithIndex((pid, iter) => {
       val gen = new Random(pid)
       var model: LDAModel = null
@@ -454,13 +458,22 @@ object LDA {
     val newEdges = degrees.triplets.map { e =>
       (partitionStrategy.getPartition(e), Edge(e.srcId, e.dstId, e.attr))
     }.partitionBy(new HashPartitioner(numPartitions)).map(_._2)
+    println("HAO-AIOB initializeCorpus stat edges")
+    val edgeStat = newEdges.mapPartitionsWithIndex{ case (pid:Int, iter:Iterator[_]) =>
+      Iterator((pid, iter.length))
+    }.collect().map(_.toString).mkString(",")
+    println(s"HAO EDGE STAT: $edgeStat")
     corpus = Graph.fromEdges(newEdges, null, storageLevel, storageLevel)
     // end degree-based hashing
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
+    println("HAO-AIOB initializeCorpus updateCounter started")
     corpus = updateCounter(corpus, numTopics).cache()
+    println("HAO-AIOB initializeCorpus corpus.vertices.count started")
     corpus.vertices.count()
+    println("HAO-AIOB initializeCorpus corpus.edges.count started")
     corpus.edges.count()
     edges.unpersist()
+    println("HAO-AIOB initializeCorpus ended")
     corpus
   }
 

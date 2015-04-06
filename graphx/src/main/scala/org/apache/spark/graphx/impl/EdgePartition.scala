@@ -22,6 +22,7 @@ import scala.reflect.{classTag, ClassTag}
 import org.apache.spark.graphx._
 import org.apache.spark.graphx.util.collection.GraphXPrimitiveKeyOpenHashMap
 import org.apache.spark.util.collection.BitSet
+import org.apache.spark.Logging
 
 /**
  * A collection of edges, along with referenced vertex attributes and an optional active vertex set
@@ -62,7 +63,7 @@ class EdgePartition[
     local2global: Array[VertexId],
     vertexAttrs: Array[VD],
     activeSet: Option[VertexSet])
-  extends Serializable {
+  extends Serializable with Logging{
 
   /** No-arg constructor for serialization. */
   private def this() = this(null, null, null, null, null, null, null, null)
@@ -82,13 +83,36 @@ class EdgePartition[
       Some(activeSet))
   }
 
+  def haoTrace() = {
+               logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
+  }
+
   /** Return a new `EdgePartition` with updates to vertex attributes specified in `iter`. */
   def updateVertices(iter: Iterator[(VertexId, VD)]): EdgePartition[ED, VD] = {
     val newVertexAttrs = new Array[VD](vertexAttrs.length)
     System.arraycopy(vertexAttrs, 0, newVertexAttrs, 0, vertexAttrs.length)
     while (iter.hasNext) {
       val kv = iter.next()
-      newVertexAttrs(global2local(kv._1)) = kv._2
+      try {
+        newVertexAttrs(global2local(kv._1)) = kv._2
+      } catch {
+        case e:ArrayIndexOutOfBoundsException =>
+               val keys = global2local.keySet.iterator.mkString(",")
+               val values = global2local._values.iterator.mkString(",")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException(${kv._1}) keys:$keys => values:$values")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
+               logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
+               throw e
+        case e:Exception =>
+               throw e
+      }
     }
     new EdgePartition(
       localSrcIds, localDstIds, data, index, global2local, local2global, newVertexAttrs,
