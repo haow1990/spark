@@ -88,12 +88,12 @@ class EdgePartition[
     if (ppid != -1) {
       pid = ppid
     }
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException localSrcIds: ${localSrcIds.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException localDstIds: ${localDstIds.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException data[${data.length}]")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException global2local: ${global2local.iterator.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException local2global: ${local2global.iterator.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid data(${System.identityHashCode(data)})[${data.length}]")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid global2local(${System.identityHashCode(global2local)}): ${global2local.iterator.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid local2global(${System.identityHashCode(local2global)}): ${local2global.iterator.mkString(",")}")
   }
 
   /** Return a new `EdgePartition` with updates to vertex attributes specified in `iter`. */
@@ -108,7 +108,7 @@ class EdgePartition[
         case e:ArrayIndexOutOfBoundsException =>
           val keys = global2local.keySet.iterator.mkString(",")
           val values = global2local._values.iterator.mkString(",")
-          logInfo(s"HAO ArrayIndexOutOfBoundsException(${kv._1}) keys:$keys => values:$values")
+          logInfo(s"HAO ArrayIndexOutOfBoundsException[updateVertices] partitionId=$pid (${kv._1}) keys:$keys => values:$values")
           haoTrace("updateVertices")
           throw e
         case e:Exception =>
