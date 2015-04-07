@@ -142,7 +142,8 @@ abstract class RDD[T: ClassTag](
   /** A unique ID for this RDD (within its SparkContext). */
   val id: Int = sc.newRddId()
 
-  val _printStacktrace = println(s"HAO-RDD $id ${Thread.currentThread.getStackTrace.drop(2).map(_.toString).mkString(" @from ")}")
+  val _Stacktrace = Thread.currentThread.getStackTrace.drop(2).map(_.toString).mkString(" @from ")
+  val _printStackTrace = println(s"HAO-RDD $id ${_Stacktrace}")
 
   /** A friendly name for this RDD */
   @transient var name: String = null
@@ -1091,7 +1092,7 @@ abstract class RDD[T: ClassTag](
         } else {
           // the left side of max is >=1 whenever partsScanned >= 2
           numPartsToTry = Math.max((1.5 * num * partsScanned / buf.size).toInt - partsScanned, 1)
-          numPartsToTry = Math.min(numPartsToTry, partsScanned * 4) 
+          numPartsToTry = Math.min(numPartsToTry, partsScanned * 4)
         }
       }
 

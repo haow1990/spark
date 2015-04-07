@@ -84,16 +84,20 @@ class EdgePartition[
   }
 
   var pid = -1
-  def haoTrace(info:String, ppid:Int = -1) = {
+  def haoTrace(info:String, ppid:Int = -1, st:Option[String] = None) = {
     if (ppid != -1) {
       pid = ppid
     }
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid data(${System.identityHashCode(data)})[${data.length}]")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid global2local(${System.identityHashCode(global2local)}): ${global2local.iterator.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid local2global(${System.identityHashCode(local2global)}): ${local2global.iterator.mkString(",")}")
+    if (st.isDefined) {
+      logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)} st: ${st.get}")
+    }
+
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid data(${System.identityHashCode(data)})[${data.length}]")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid global2local(${System.identityHashCode(global2local)}): ${global2local.iterator.mkString(",")}")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid local2global(${System.identityHashCode(local2global)}): ${local2global.iterator.mkString(",")}")
+
   }
 
   /** Return a new `EdgePartition` with updates to vertex attributes specified in `iter`. */
@@ -108,8 +112,8 @@ class EdgePartition[
         case e:ArrayIndexOutOfBoundsException =>
           val keys = global2local.keySet.iterator.mkString(",")
           val values = global2local._values.iterator.mkString(",")
-          logInfo(s"HAO ArrayIndexOutOfBoundsException[updateVertices] partitionId=$pid (${kv._1}) keys:$keys => values:$values")
-          haoTrace("updateVertices")
+          logInfo(s"HAO ArrayIndexOutOfBoundsException[updateVertices(${kv._1})] this.id=${System.identityHashCode(this)} partitionId=$pid (${kv._1}) keys:$keys => values:$values")
+          haoTrace(s"updateVertices(${kv._1})")
           throw e
         case e:Exception =>
           throw e
