@@ -107,7 +107,7 @@ object EdgeRDD {
         builder.add(e.srcId, e.dstId, e.attr)
       }
       val ep = builder.toEdgePartition
-      ep.haoTrace("EdgeRDD.fromEdges", pid, edges._Stacktrace)
+      ep.haoTrace(s"EdgeRDD.fromEdges[edgeRddId=${edges.id}}]", pid)
       Iterator((pid, ep))
     }
     EdgeRDD.fromEdgePartitions(edgePartitions)

@@ -84,14 +84,12 @@ class EdgePartition[
   }
 
   var pid = -1
-  def haoTrace(info:String, ppid:Int = -1, st:Option[String] = None) = {
+  def haoTrace(info:String, ppid:Int = -1) = {
     if (ppid != -1) {
       pid = ppid
     }
-    if (st.isDefined) {
-      logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)} st: ${st.get}")
-    }
-
+    val st = Thread.currentThread.getStackTrace.drop(2).map(_.toString).mkString(" @from ")
+    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)} st: ${st}")
     logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
     logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
     logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid data(${System.identityHashCode(data)})[${data.length}]")
