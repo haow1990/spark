@@ -374,6 +374,7 @@ class DAGScheduler(
             dep match {
               case shufDep: ShuffleDependency[_, _, _] =>
                 val mapStage = getShuffleMapStage(shufDep, stage.jobId)
+                println(s"HAO STAGE: jobId=${mapStage.jobId} stageId=${mapStage.id} rddId=${mapStage.rdd.id}")
                 if (!mapStage.isAvailable) {
                   missing += mapStage
                 }
@@ -488,6 +489,7 @@ class DAGScheduler(
     }
 
     val jobId = nextJobId.getAndIncrement()
+    println(s"HAO JOB STACKTRACE $jobId ${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     if (partitions.size == 0) {
       return new JobWaiter[U](this, jobId, 0, resultHandler)
     }
@@ -718,6 +720,22 @@ class DAGScheduler(
     submitWaitingStages()
   }
 
+  private def haoGenRddDep(finalRdd:RDD[_], jobId:Int, rddNames:scala.collection.mutable.Map[Int, String]):Unit = {
+      val q = scala.collection.mutable.Queue[RDD[_]](finalRdd)
+      while (q.length > 0) {
+        val rdd = q.dequeue
+        rddNames(rdd.id) = "|||%s||%s|||".format(rdd.toString, rdd.name)
+        rdd.dependencies.foreach {
+          case dep:ShuffleDependency[_, _, _] =>
+            println("HAO RDD DEPENDENCY: JobId=%d %d =%d> %d".format(jobId, rdd.id, dep.shuffleId, dep.rdd.id))
+            if (rddNames.contains(dep.rdd.id) == false) q.enqueue(dep.rdd)
+          case dep:Dependency[_] =>
+            println("HAO RDD DEPENDENCY: JobId=%d %d -> %d".format(jobId, rdd.id, dep.rdd.id))
+            if (rddNames.contains(dep.rdd.id) == false) q.enqueue(dep.rdd)
+        }
+      }
+  }
+
   private[scheduler] def handleJobSubmitted(jobId: Int,
       finalRDD: RDD[_],
       func: (TaskContext, Iterator[_]) => _,
@@ -727,11 +745,24 @@ class DAGScheduler(
       listener: JobListener,
       properties: Properties = null)
   {
+    println("HAO JOB: JobId=%d finalRDD=%d".format(jobId, finalRDD.id))
+    val rddNames = scala.collection.mutable.Map[Int, String]()
+    haoGenRddDep(finalRDD, jobId, rddNames)
+    println("HAO RDD NAME: JobId=" + jobId + rddNames.map(pair=>" %d=%s".format(pair._1, pair._2)).reduce(_ + _))
+    val cacheLog = new StringBuilder("HAO RDD CACHE: JobId=")
+    cacheLog.append(jobId)
+    sc.getPersistentRDDs.foreach(pair=>{
+      cacheLog.append("##")
+      cacheLog.append(pair._1)
+    })
+    println(cacheLog.toString)
+
     var finalStage: Stage = null
     try {
       // New stage creation may throw an exception if, for example, jobs are run on a
       // HadoopRDD whose underlying HDFS files have been deleted.
       finalStage = newStage(finalRDD, partitions.size, None, jobId, callSite)
+      println(s"HAO STAGE: jobId=${jobId} stageId=${finalStage.id} rddId=${finalStage.rdd.id}")
     } catch {
       case e: Exception =>
         logWarning("Creating new stage failed due to exception - job: " + jobId, e)
@@ -765,11 +796,17 @@ class DAGScheduler(
     submitWaitingStages()
   }
 
+  private val stageInfoLogged = scala.collection.mutable.Set[(Int, Int)]()
+
   /** Submits stage, but first recursively submits any missing parents. */
   private def submitStage(stage: Stage) {
     val jobId = activeJobForStage(stage)
     if (jobId.isDefined) {
       logDebug("submitStage(" + stage + ")")
+      if (stageInfoLogged.contains((jobId.get, stage.id)) == false) {
+        println("HAO STAGE: JobId=%d StageId=%d FinalRDD=%d".format(jobId.get, stage.id, stage.rdd.id))
+        stageInfoLogged.add((jobId.get, stage.id))
+      }
       if (!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {
         val missing = getMissingParentStages(stage).sortBy(_.id)
         logDebug("missing: " + missing)
