@@ -213,6 +213,7 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
 
   /** Unregister shuffle data. */
   def unregisterShuffle(shuffleId: Int) {
+    logInfo(s"HAO unregisterShuffle: shuffleId=${shuffleId} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     mapStatuses.remove(shuffleId)
   }
 
@@ -243,12 +244,14 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
     new MetadataCleaner(MetadataCleanerType.MAP_OUTPUT_TRACKER, this.cleanup, conf)
 
   def registerShuffle(shuffleId: Int, numMaps: Int) {
+    logInfo(s"HAO registerShuffle: shuffleId=${shuffleId} numMaps=${numMaps}}")
     if (mapStatuses.put(shuffleId, new Array[MapStatus](numMaps)).isDefined) {
       throw new IllegalArgumentException("Shuffle ID " + shuffleId + " registered twice")
     }
   }
 
   def registerMapOutput(shuffleId: Int, mapId: Int, status: MapStatus) {
+    logInfo(s"HAO registerMapOutput: shuffleId=${shuffleId} mapId=${mapId} status.location=${status.location.toString}}")
     val array = mapStatuses(shuffleId)
     array.synchronized {
       array(mapId) = status
@@ -257,6 +260,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Register multiple map output information for the given shuffle */
   def registerMapOutputs(shuffleId: Int, statuses: Array[MapStatus], changeEpoch: Boolean = false) {
+    logInfo(s"HAO registerMapOutputs: shuffleId=${shuffleId} statuses.location=${statuses.map(_.location.toString).mkString(",")}")
     mapStatuses.put(shuffleId, Array[MapStatus]() ++ statuses)
     if (changeEpoch) {
       incrementEpoch()
@@ -265,6 +269,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Unregister map output information of the given shuffle, mapper and block manager */
   def unregisterMapOutput(shuffleId: Int, mapId: Int, bmAddress: BlockManagerId) {
+    logInfo(s"HAO unregisterMapOutput: shuffleId=${shuffleId} mapId=${mapId} bmAddress=${bmAddress.toString} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     val arrayOpt = mapStatuses.get(shuffleId)
     if (arrayOpt.isDefined && arrayOpt.get != null) {
       val array = arrayOpt.get
@@ -281,6 +286,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Unregister shuffle data */
   override def unregisterShuffle(shuffleId: Int) {
+    logInfo(s"HAO unregisterShuffle: shuffleId=${shuffleId} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     mapStatuses.remove(shuffleId)
     cachedSerializedStatuses.remove(shuffleId)
   }
@@ -315,6 +321,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
     }
     // If we got here, we failed to find the serialized locations in the cache, so we pulled
     // out a snapshot of the locations as "statuses"; let's serialize and return that
+    logInfo(s"HAO getSerializedMapOutputStatuses: shuffleId=${shuffleId} locations=${statuses.map(_.location.toString)}")
     val bytes = MapOutputTracker.serializeMapStatuses(statuses)
     logInfo("Size of output statuses for shuffle %d is %d bytes".format(shuffleId, bytes.length))
     // Add them into the table only if the epoch hasn't changed while we were working
