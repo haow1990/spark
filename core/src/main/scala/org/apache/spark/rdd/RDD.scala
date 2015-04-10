@@ -142,6 +142,9 @@ abstract class RDD[T: ClassTag](
   /** A unique ID for this RDD (within its SparkContext). */
   val id: Int = sc.newRddId()
 
+  private val _printStacktrace =
+    logInfo(s"HAO-RDD $id ${Thread.currentThread.getStackTrace.drop(2).map(_.toString).mkString(" @from ")}")
+
   /** A friendly name for this RDD */
   @transient var name: String = null
 
