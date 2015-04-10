@@ -246,6 +246,7 @@ class DAGScheduler(
   {
     val parentStages = getParentStages(rdd, jobId)
     val id = nextStageId.getAndIncrement()
+    logInfo(s"HAO STAGE: jobId=${jobId} stageid=${id} rddId=${rdd.id}")
     val stage = new Stage(id, rdd, numTasks, shuffleDep, parentStages, jobId, callSite)
     stageIdToStage(id) = stage
     updateJobIdStageIdMaps(jobId, stage)
@@ -488,7 +489,7 @@ class DAGScheduler(
     }
 
     val jobId = nextJobId.getAndIncrement()
-    println(s"HAO JOB STACKTRACE $jobId ${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
+    logInfo(s"HAO JOB STACKTRACE $jobId ${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     if (partitions.size == 0) {
       return new JobWaiter[U](this, jobId, 0, resultHandler)
     }
@@ -726,10 +727,10 @@ class DAGScheduler(
         rddNames(rdd.id) = "|||%s||%s|||".format(rdd.toString, rdd.name)
         rdd.dependencies.foreach {
           case dep:ShuffleDependency[_, _, _] =>
-            println("HAO RDD DEPENDENCY: JobId=%d %d => %d".format(jobId, rdd.id, dep.rdd.id))
+            logInfo("HAO RDD DEPENDENCY: JobId=%d %d =%d> %d".format(jobId, rdd.id, dep.shuffleId, dep.rdd.id))
             if (rddNames.contains(dep.rdd.id) == false) q.enqueue(dep.rdd)
           case dep:Dependency[_] =>
-            println("HAO RDD DEPENDENCY: JobId=%d %d -> %d".format(jobId, rdd.id, dep.rdd.id))
+            logInfo("HAO RDD DEPENDENCY: JobId=%d %d -> %d".format(jobId, rdd.id, dep.rdd.id))
             if (rddNames.contains(dep.rdd.id) == false) q.enqueue(dep.rdd)
         }
       }
@@ -744,17 +745,17 @@ class DAGScheduler(
       listener: JobListener,
       properties: Properties = null)
   {
-    println("HAO JOB: JobId=%d finalRDD=%d".format(jobId, finalRDD.id))
+    logInfo("HAO JOB: JobId=%d finalRDD=%d".format(jobId, finalRDD.id))
     val rddNames = scala.collection.mutable.Map[Int, String]()
     haoGenRddDep(finalRDD, jobId, rddNames)
-    println("HAO RDD NAME: JobId=" + jobId + rddNames.map(pair=>" %d=%s".format(pair._1, pair._2)).reduce(_ + _))
+    logInfo("HAO RDD NAME: JobId=" + jobId + rddNames.map(pair=>" %d=%s".format(pair._1, pair._2)).reduce(_ + _))
     val cacheLog = new StringBuilder("HAO RDD CACHE: JobId=")
     cacheLog.append(jobId)
     sc.getPersistentRDDs.foreach(pair=>{
       cacheLog.append("##")
       cacheLog.append(pair._1)
     })
-    println(cacheLog.toString)
+    logInfo(cacheLog.toString)
 
     var finalStage: Stage = null
     try {
@@ -802,7 +803,6 @@ class DAGScheduler(
     if (jobId.isDefined) {
       logDebug("submitStage(" + stage + ")")
       if (stageInfoLogged.contains((jobId.get, stage.id)) == false) {
-        println("HAO STAGE: JobId=%d StageId=%d FinalRDD=%d".format(jobId.get, stage.id, stage.rdd.id))
         stageInfoLogged.add((jobId.get, stage.id))
       }
       if (!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {

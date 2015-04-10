@@ -25,7 +25,7 @@ import scala.collection.{JavaConversions, mutable}
 
 import org.apache.spark.Logging
 
-private[spark] case class TimeStampedValue[V](value: V, timestamp: Long)
+private[spark] case class TimeStampedValue[V](value: V, timestamp: Long) { override def toString = s"($value, $timestamp)" }
 
 /**
  * This is a custom implementation of scala.collection.mutable.Map which stores the insertion
@@ -135,6 +135,8 @@ private[spark] class TimeStampedHashMap[A, B](updateTimeStampOnGet: Boolean = fa
   def clearOldValues(threshTime: Long) {
     clearOldValues(threshTime, (_, _) => ())
   }
+
+  def toHaoString = internalMap.toString
 
   private def currentTime: Long = System.currentTimeMillis
 

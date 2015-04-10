@@ -90,11 +90,11 @@ class EdgePartition[
     }
     val st = Thread.currentThread.getStackTrace.drop(2).map(_.toString).mkString(" @from ")
     logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] partitionId=$pid this.id=${System.identityHashCode(this)} st: ${st}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
+    //logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localSrcIds(${System.identityHashCode(localSrcIds)}): ${localSrcIds.mkString(",")}")
+    //logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid localDstIds(${System.identityHashCode(localDstIds)}): ${localDstIds.mkString(",")}")
     logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid data(${System.identityHashCode(data)})[${data.length}]")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid global2local(${System.identityHashCode(global2local)}): ${global2local.iterator.mkString(",")}")
-    logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid local2global(${System.identityHashCode(local2global)}): ${local2global.iterator.mkString(",")}")
+    //logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid global2local(${System.identityHashCode(global2local)}): ${global2local.iterator.mkString(",")}")
+    //logInfo(s"HAO ArrayIndexOutOfBoundsException[$info] this.id=${System.identityHashCode(this)} partitionId=$pid local2global(${System.identityHashCode(local2global)}): ${local2global.iterator.mkString(",")}")
 
   }
 

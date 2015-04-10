@@ -33,6 +33,18 @@ import org.apache.spark.shuffle.MetadataFetchFailedException
 import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.util._
 
+private[spark] class HaoTimeStampedHashMap[A, B](updateTimeStampOnGet: Boolean = false)
+  extends TimeStampedHashMap[A,B](updateTimeStampOnGet) {
+
+  val id = System.identityHashCode(this)
+
+  override def clearOldValues(threshTime: Long) {
+    logInfo(s"HAO TimeStampedHashMap[$id] clearOldValues threshTime=${threshTime} value=${super.toHaoString} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(",")}")
+    clearOldValues(threshTime, (_, _) => ())
+  }
+
+}
+
 private[spark] sealed trait MapOutputTrackerMessage
 private[spark] case class GetMapOutputStatuses(shuffleId: Int)
   extends MapOutputTrackerMessage
@@ -204,14 +216,18 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
       if (newEpoch > epoch) {
         logInfo("Updating epoch to " + newEpoch + " and clearing cache")
         epoch = newEpoch
+        logInfo(s"HAO updateEpoch[${System.identityHashCode(mapStatuses)}]: newEpoch=${newEpoch} before=${mapStatuses.keys.map(_.toString).mkString(",")}");
         mapStatuses.clear()
+        logInfo(s"HAO updateEpoch[${System.identityHashCode(mapStatuses)}]: newEpoch=${newEpoch} after=${mapStatuses.keys.map(_.toString).mkString(",")}");
       }
     }
   }
 
   /** Unregister shuffle data. */
   def unregisterShuffle(shuffleId: Int) {
+    logInfo(s"HAO unregisterShuffle[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} before=${mapStatuses.keys.map(_.toString).mkString(",")} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     mapStatuses.remove(shuffleId)
+    logInfo(s"HAO unregisterShuffle[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} after=${mapStatuses.keys.map(_.toString).mkString(",")} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
   }
 
   /** Stop the tracker. */
@@ -233,20 +249,22 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
    * so that statuses are dropped only by explicit de-registering or by TTL-based cleaning (if set).
    * Other than these two scenarios, nothing should be dropped from this HashMap.
    */
-  protected val mapStatuses = new TimeStampedHashMap[Int, Array[MapStatus]]()
-  private val cachedSerializedStatuses = new TimeStampedHashMap[Int, Array[Byte]]()
+  protected val mapStatuses = new HaoTimeStampedHashMap[Int, Array[MapStatus]]()
+  private val cachedSerializedStatuses = new HaoTimeStampedHashMap[Int, Array[Byte]]()
 
   // For cleaning up TimeStampedHashMaps
   private val metadataCleaner =
     new MetadataCleaner(MetadataCleanerType.MAP_OUTPUT_TRACKER, this.cleanup, conf)
 
   def registerShuffle(shuffleId: Int, numMaps: Int) {
+    logInfo(s"HAO registerShuffle[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} numMaps=${numMaps}}")
     if (mapStatuses.put(shuffleId, new Array[MapStatus](numMaps)).isDefined) {
       throw new IllegalArgumentException("Shuffle ID " + shuffleId + " registered twice")
     }
   }
 
   def registerMapOutput(shuffleId: Int, mapId: Int, status: MapStatus) {
+    logInfo(s"HAO registerMapOutput[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} mapId=${mapId} status.location=${status.location.toString}}")
     val array = mapStatuses(shuffleId)
     array.synchronized {
       array(mapId) = status
@@ -255,6 +273,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Register multiple map output information for the given shuffle */
   def registerMapOutputs(shuffleId: Int, statuses: Array[MapStatus], changeEpoch: Boolean = false) {
+    logInfo(s"HAO registerMapOutputs[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} statuses.location=${statuses.map(_.location.toString).mkString(",")}")
     mapStatuses.put(shuffleId, Array[MapStatus]() ++ statuses)
     if (changeEpoch) {
       incrementEpoch()
@@ -263,6 +282,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Unregister map output information of the given shuffle, mapper and block manager */
   def unregisterMapOutput(shuffleId: Int, mapId: Int, bmAddress: BlockManagerId) {
+    logInfo(s"HAO unregisterMapOutput[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} mapId=${mapId} bmAddress=${bmAddress.toString} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     val arrayOpt = mapStatuses.get(shuffleId)
     if (arrayOpt.isDefined && arrayOpt.get != null) {
       val array = arrayOpt.get
@@ -279,6 +299,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
 
   /** Unregister shuffle data */
   override def unregisterShuffle(shuffleId: Int) {
+    logInfo(s"HAO unregisterShuffle[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} st=${Thread.currentThread.getStackTrace.map(_.toString).mkString(" @from ")}")
     mapStatuses.remove(shuffleId)
     cachedSerializedStatuses.remove(shuffleId)
   }
@@ -307,12 +328,15 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf)
         case Some(bytes) =>
           return bytes
         case None =>
+          logInfo(s"HAO getSerializedMapOutputStatuses[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} before=${mapStatuses.keys.map(_.toString).mkString(",")}");
           statuses = mapStatuses.getOrElse(shuffleId, Array[MapStatus]())
+          logInfo(s"HAO getSerializedMapOutputStatuses[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} after=${mapStatuses.keys.map(_.toString).mkString(",")}");
           epochGotten = epoch
       }
     }
     // If we got here, we failed to find the serialized locations in the cache, so we pulled
     // out a snapshot of the locations as "statuses"; let's serialize and return that
+    logInfo(s"HAO getSerializedMapOutputStatuses[${System.identityHashCode(mapStatuses)}]: shuffleId=${shuffleId} locations=${statuses.map(_.location.toString).mkString(",")}")
     val bytes = MapOutputTracker.serializeMapStatuses(statuses)
     logInfo("Size of output statuses for shuffle %d is %d bytes".format(shuffleId, bytes.length))
     // Add them into the table only if the epoch hasn't changed while we were working
