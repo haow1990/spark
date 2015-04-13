@@ -170,12 +170,12 @@ class LDA private[mllib](
   def runGibbsSampling(iterations: Int): Unit = {
     for (iter <- 1 to iterations) {
       // logInfo(s"Gibbs samplin perplexity $iter:                 ${perplexity}")
-      // logInfo(s"Gibbs sampling (Iteration $iter/$iterations)")
-      // val startedAt = System.nanoTime()
+      logInfo(s"Gibbs sampling (Iteration $iter/$iterations)")
+      val startedAt = System.nanoTime()
       gibbsSampling()
-      // val endAt = System.nanoTime()
-      // val useTime = (endAt - startedAt) / 1e9
-      // logInfo(s"Gibbs sampling use time  $iter:              $useTime")
+      val endAt = System.nanoTime()
+      val useTime = (endAt - startedAt) / 1e9
+      logInfo(s"Gibbs sampling use time  $iter:              $useTime")
     }
   }
 
