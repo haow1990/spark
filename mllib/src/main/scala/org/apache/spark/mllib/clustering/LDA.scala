@@ -123,10 +123,12 @@ class LDA private[mllib](
     val sampledCorpus = sampleTokens(corpus, totalTopicCounter, innerIter + seed,
       numTokens, numTopics, numTerms, alpha, alphaAS, beta)
     //sampledCorpus.persist(storageLevel)
+    sampledCorpus.edges.persist(storageLevel)
 
     val counterCorpus = updateCounter(sampledCorpus, numTopics)
     checkpoint(counterCorpus)
-    counterCorpus.persist(storageLevel)
+    //counterCorpus.persist(storageLevel)
+    counterCorpus.vertices.persist(storageLevel)
     // counterCorpus.vertices.count()
     //counterCorpus.edges.count()
     totalTopicCounter = collectTotalTopicCounter(counterCorpus)
