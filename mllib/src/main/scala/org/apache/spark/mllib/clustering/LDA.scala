@@ -122,13 +122,13 @@ class LDA private[mllib](
   private def gibbsSampling(): Unit = {
     val sampledCorpus = sampleTokens(corpus, totalTopicCounter, innerIter + seed,
       numTokens, numTopics, numTerms, alpha, alphaAS, beta)
-    sampledCorpus.persist(storageLevel)
+    //sampledCorpus.persist(storageLevel)
 
     val counterCorpus = updateCounter(sampledCorpus, numTopics)
     checkpoint(counterCorpus)
     counterCorpus.persist(storageLevel)
     // counterCorpus.vertices.count()
-    counterCorpus.edges.count()
+    //counterCorpus.edges.count()
     totalTopicCounter = collectTotalTopicCounter(counterCorpus)
 
     corpus.edges.unpersist(false)
