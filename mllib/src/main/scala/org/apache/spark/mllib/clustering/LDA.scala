@@ -174,6 +174,8 @@ class LDA private[mllib](
   }
 
   def runGibbsSampling(iterations: Int): Unit = {
+    this.corpus.edges.unpersist(false)
+    this.corpus.vertices.unpersist(false)
     for (iter <- 1 to iterations) {
       // logInfo(s"Gibbs samplin perplexity $iter:                 ${perplexity}")
       logInfo(s"Gibbs sampling (Iteration $iter/$iterations)")
@@ -293,6 +295,7 @@ object LDA {
     alphaAS: Double = 0.1): LDAModel = {
     require(totalIter > 0, "totalIter is less than 0")
     val topicModeling = new LDA(docs, numTopics, alpha, beta, alphaAS)
+    docs.unpersist(false)
     topicModeling.runGibbsSampling(totalIter - 1)
     topicModeling.saveModel(1)
   }

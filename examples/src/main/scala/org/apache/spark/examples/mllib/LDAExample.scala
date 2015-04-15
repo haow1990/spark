@@ -228,6 +228,7 @@ object LDAExample {
       val sb = Vectors.sparse(vocab.size, indices, values).asInstanceOf[SparseVector]
       (id, sb)
     }.filter(_._2.values.length > 0).cache
+    tokenized.unpersist(false)
 
     val docSize = documents.count
 
