@@ -119,6 +119,8 @@ class LDA private[mllib](
     globalTopicCounter
   }
 
+  private var lastSampledCorpus:Option[Graph[LDA.VD, LDA.ED]] = None
+
   private def gibbsSampling(): Unit = {
     val sampledCorpus = sampleTokens(corpus, totalTopicCounter, innerIter + seed,
       numTokens, numTopics, numTerms, alpha, alphaAS, beta)
@@ -135,8 +137,10 @@ class LDA private[mllib](
 
     corpus.edges.unpersist(false)
     corpus.vertices.unpersist(false)
-    sampledCorpus.edges.unpersist(false)
-    sampledCorpus.vertices.unpersist(false)
+    //sampledCorpus.edges.unpersist(false)
+    //sampledCorpus.vertices.unpersist(false)
+    lastSampledCorpus.map(_.edges.unpersist(false))
+    lastSampledCorpus = Some(sampledCorpus)
     corpus = counterCorpus
     innerIter += 1
   }
