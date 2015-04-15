@@ -463,14 +463,16 @@ object LDA {
     val newEdges = degrees.triplets.map { e =>
       (partitionStrategy.getPartition(e), Edge(e.srcId, e.dstId, e.attr))
     }.partitionBy(new HashPartitioner(numPartitions)).map(_._2)
+    corpus.unpersist(false)
     corpus = Graph.fromEdges(newEdges, null, storageLevel, storageLevel)
     // end degree-based hashing
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
-    corpus = updateCounter(corpus, numTopics).cache()
-    corpus.vertices.count()
-    corpus.edges.count()
+    val resultCorpus = updateCounter(corpus, numTopics).cache()
+    corpus.unpersist()
+    resultCorpus.vertices.count()
+    resultCorpus.edges.count()
     edges.unpersist()
-    corpus
+    resultCorpus
   }
 
   private def initializeEdges(
