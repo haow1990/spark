@@ -21,6 +21,7 @@ import java.lang.ref.SoftReference
 import java.util.Random
 
 import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
+import nf.fr.eraasoft.pool.{ObjectPool, PoolableObjectBase, PoolSettings}
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
@@ -37,6 +38,31 @@ import org.apache.spark.util.random.XORShiftRandom
 
 import LDA._
 import LDAUtils._
+
+object SparseVectorPool {
+  class ObjBase(val count:Int) extends PoolableObjectBase[breeze.linalg.SparseVector[Int]] {
+    def make():BSV[Int] = {
+      BSV.zeros[Int](count)
+    }
+
+    def activate(obj:BSV[Int]):Unit = {
+      obj *= 0
+    }
+  }
+
+  private var count:Int = 0
+
+  private lazy val pool:ObjectPool[breeze.linalg.SparseVector[Int]] = {
+    val settings = new PoolSettings[breeze.linalg.SparseVector[Int]](new ObjBase(count))
+    settings.pool
+  }
+
+  def pool(topics:Int):ObjectPool[breeze.linalg.SparseVector[Int]] = {
+    assert(count == 0 || topics == count, s"SparseVectorPool topics size can't change: count=$count topics=$topics")
+    count = topics
+    pool
+  }
+}
 
 class LDA private[mllib](
   @transient private var corpus: Graph[VD, ED],
@@ -410,13 +436,20 @@ object LDA {
   private def updateCounter(graph: Graph[VD, ED], numTopics: Int): Graph[VD, ED] = {
     val newCounter = graph.aggregateMessages[VD](ctx => {
       val topics = ctx.attr
-      val vector = BSV.zeros[Count](numTopics)
+      val pool = SparseVectorPool.pool(numTopics)
+      val v1 = pool.getObj
+      val v2 = pool.getObj
       for (topic <- topics) {
-        vector(topic) += 1
+        v1(topic) += 1
+        v2(topic) += 1
       }
-      ctx.sendToDst(vector)
-      ctx.sendToSrc(vector)
-    }, _ + _, TripletFields.EdgeOnly).mapValues(v => {
+      ctx.sendToDst(v1)
+      ctx.sendToSrc(v2)
+    }, (v1, v2) => {
+      v1 += v2
+      SparseVectorPool.pool(numTopics).returnObj(v2)
+      v1
+    }, TripletFields.EdgeOnly).mapValues(v => {
       val used = v.used
       if (v.index.length == used) {
         v
