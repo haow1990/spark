@@ -690,6 +690,7 @@ private class AggregatingEdgeContextHao[VD, ED, A : ClassTag](
       // copy
       val bas = new ByteArrayOutputStream()
       val out = new ObjectOutputStream(bas)
+      out.writeObject(msg)
       out.close()
       val in = new ObjectInputStream(new ByteArrayInputStream(bas.toByteArray))
       aggregates(localId) = in.readObject().asInstanceOf[A]
