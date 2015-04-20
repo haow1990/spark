@@ -174,8 +174,6 @@ class LDA private[mllib](
   }
 
   def runGibbsSampling(iterations: Int): Unit = {
-    this.corpus.edges.unpersist(false)
-    this.corpus.vertices.unpersist(false)
     for (iter <- 1 to iterations) {
       // logInfo(s"Gibbs samplin perplexity $iter:                 ${perplexity}")
       logInfo(s"Gibbs sampling (Iteration $iter/$iterations)")
@@ -468,7 +466,7 @@ object LDA {
     // end degree-based hashing
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
     val resultCorpus = updateCounter(corpus, numTopics).cache()
-    corpus.vertices.unpersist(false)
+    corpus.unpersist()
     resultCorpus.vertices.count()
     resultCorpus.edges.count()
     edges.unpersist()
