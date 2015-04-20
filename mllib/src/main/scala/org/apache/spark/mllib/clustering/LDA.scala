@@ -468,7 +468,7 @@ object LDA {
     // end degree-based hashing
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
     val resultCorpus = updateCounter(corpus, numTopics).cache()
-    corpus.unpersist()
+    corpus.vertices.unpersist(false)
     resultCorpus.vertices.count()
     resultCorpus.edges.count()
     edges.unpersist()
