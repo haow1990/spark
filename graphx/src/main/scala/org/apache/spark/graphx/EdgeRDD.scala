@@ -108,7 +108,7 @@ object EdgeRDD {
         builder.add(e.srcId, e.dstId, e.attr)
       }
       val ep = builder.toEdgePartition
-      ep.haoStat(s"fromEdges parentEdge.id=$edgeId")
+      ep.haoStat(s"fromEdges parentEdge.id=$edgeId pid=$pid")
       Iterator((pid, ep))
     }
     EdgeRDD.fromEdgePartitions(edgePartitions)
