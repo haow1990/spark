@@ -414,7 +414,10 @@ object LDA {
       }
       ctx.sendToDst(vector)
       ctx.sendToSrc(vector)
-    }, _ + _, TripletFields.EdgeOnly, None).mapValues(v => {
+    }, (v1, v2) => {
+      v1 += v2
+      v1
+    }, TripletFields.EdgeOnly, None).mapValues(v => {
       val used = v.used
       if (v.index.length == used) {
         v
