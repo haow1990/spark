@@ -292,7 +292,7 @@ object LDA {
     beta: Double = 0.01,
     alphaAS: Double = 0.1): LDAModel = {
     require(totalIter > 0, "totalIter is less than 0")
-    val topicModeling = new LDA(docs, numTopics, alpha, beta, alphaAS)
+    val topicModeling = new LDA(docs, numTopics, alpha, beta, alphaAS, StorageLevel.MEMORY_ONLY)
     docs.unpersist(false)
     topicModeling.runGibbsSampling(totalIter - 1)
     topicModeling.saveModel(1)
