@@ -307,6 +307,8 @@ private[mllib] object LDAUtils {
     val pMean = 1.0 / used
     val table = (new Array[Int](used), new Array[Int](used), new Array[Double](used))
 
+    println(s"wordTable create ${used}")
+
     val lq = new JPriorityQueue[(Int, Double)](used, tableOrdering)
     val hq = new JPriorityQueue[(Int, Double)](used, tableReverseOrdering)
 
