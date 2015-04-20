@@ -101,12 +101,15 @@ object EdgeRDD {
    * @tparam VD the type of the vertex attributes that may be joined with the returned EdgeRDD
    */
   def fromEdges[ED: ClassTag, VD: ClassTag](edges: RDD[Edge[ED]]): EdgeRDDImpl[ED, VD] = {
+    val edgeId = edges.id
     val edgePartitions = edges.mapPartitionsWithIndex { (pid, iter) =>
       val builder = new EdgePartitionBuilder[ED, VD]
       iter.foreach { e =>
         builder.add(e.srcId, e.dstId, e.attr)
       }
-      Iterator((pid, builder.toEdgePartition))
+      val ep = builder.toEdgePartition
+      ep.haoStat(s"fromEdges parentEdge.id=$edgeId")
+      Iterator((pid, ep))
     }
     EdgeRDD.fromEdgePartitions(edgePartitions)
   }

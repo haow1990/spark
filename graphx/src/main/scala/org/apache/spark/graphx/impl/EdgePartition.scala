@@ -20,6 +20,7 @@ package org.apache.spark.graphx.impl
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream}
 
 import org.apache.commons.io.output.ByteArrayOutputStream
+import org.apache.spark.Logging
 
 import scala.reflect.{classTag, ClassTag}
 
@@ -66,10 +67,14 @@ class EdgePartition[
     local2global: Array[VertexId],
     vertexAttrs: Array[VD],
     activeSet: Option[VertexSet])
-  extends Serializable {
+  extends Serializable with Logging{
 
   /** No-arg constructor for serialization. */
   private def this() = this(null, null, null, null, null, null, null, null)
+
+  def haoStat(msg:String) = {
+    logInfo(s"haoStat[$msg]: localSrcIds=${localSrcIds.length} localDstIds=${localDstIds.length} data=${data.length} vertex=${vertexAttrs.length}")
+  }
 
   /** Return a new `EdgePartition` with the specified edge data. */
   def withData[ED2: ClassTag](data: Array[ED2]): EdgePartition[ED2, VD] = {
