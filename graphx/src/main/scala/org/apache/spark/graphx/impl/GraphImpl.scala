@@ -202,6 +202,65 @@ class GraphImpl[VD: ClassTag, ED: ClassTag] protected (
     aggregateMessagesWithActiveSet(sendMsg, reduceFunc, tripletFields, activeSetOpt)
   }
 
+  def aggregateMessagesHao[A : ClassTag](
+                                            sendMsg: EdgeContext[VD, ED, A] => Unit,
+                                            mergeMsg: (A, A) => A,
+                                            tripletFields: TripletFields,
+                                            activeSetOpt: Option[(VertexRDD[_], EdgeDirection)])
+  : VertexRDD[A] = {
+
+    vertices.cache()
+    // For each vertex, replicate its attribute only to partitions where it is
+    // in the relevant position in an edge.
+    replicatedVertexView.upgrade(vertices, tripletFields.useSrc, tripletFields.useDst)
+    val view = activeSetOpt match {
+      case Some((activeSet, _)) =>
+        replicatedVertexView.withActiveSet(activeSet)
+      case None =>
+        replicatedVertexView
+    }
+    val activeDirectionOpt = activeSetOpt.map(_._2)
+
+    // Map and combine.
+    val preAgg = view.edges.partitionsRDD.mapPartitions(_.flatMap {
+      case (pid, edgePartition) =>
+        // Choose scan method
+        val activeFraction = edgePartition.numActives.getOrElse(0) / edgePartition.indexSize.toFloat
+        activeDirectionOpt match {
+          case Some(EdgeDirection.Both) =>
+            if (activeFraction < 0.8) {
+              edgePartition.aggregateMessagesIndexScanHao(sendMsg, mergeMsg, tripletFields,
+                EdgeActiveness.Both)
+            } else {
+              edgePartition.aggregateMessagesEdgeScanHao(sendMsg, mergeMsg, tripletFields,
+                EdgeActiveness.Both)
+            }
+          case Some(EdgeDirection.Either) =>
+            // TODO: Because we only have a clustered index on the source vertex ID, we can't filter
+            // the index here. Instead we have to scan all edges and then do the filter.
+            edgePartition.aggregateMessagesEdgeScanHao(sendMsg, mergeMsg, tripletFields,
+              EdgeActiveness.Either)
+          case Some(EdgeDirection.Out) =>
+            if (activeFraction < 0.8) {
+              edgePartition.aggregateMessagesIndexScanHao(sendMsg, mergeMsg, tripletFields,
+                EdgeActiveness.SrcOnly)
+            } else {
+              edgePartition.aggregateMessagesEdgeScanHao(sendMsg, mergeMsg, tripletFields,
+                EdgeActiveness.SrcOnly)
+            }
+          case Some(EdgeDirection.In) =>
+            edgePartition.aggregateMessagesEdgeScanHao(sendMsg, mergeMsg, tripletFields,
+              EdgeActiveness.DstOnly)
+          case _ => // None
+            edgePartition.aggregateMessagesEdgeScanHao(sendMsg, mergeMsg, tripletFields,
+              EdgeActiveness.Neither)
+        }
+    }).setName("GraphImpl.aggregateMessages - preAgg")
+
+    // do the final reduction reusing the index map
+    vertices.aggregateUsingIndex(preAgg, mergeMsg)
+  }
+
   override def aggregateMessagesWithActiveSet[A: ClassTag](
       sendMsg: EdgeContext[VD, ED, A] => Unit,
       mergeMsg: (A, A) => A,

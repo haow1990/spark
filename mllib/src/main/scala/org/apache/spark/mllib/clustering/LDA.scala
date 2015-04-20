@@ -292,7 +292,7 @@ object LDA {
     beta: Double = 0.01,
     alphaAS: Double = 0.1): LDAModel = {
     require(totalIter > 0, "totalIter is less than 0")
-    val topicModeling = new LDA(docs, numTopics, alpha, beta, alphaAS, StorageLevel.MEMORY_ONLY)
+    val topicModeling = new LDA(docs, numTopics, alpha, beta, alphaAS)
     docs.unpersist(false)
     topicModeling.runGibbsSampling(totalIter - 1)
     topicModeling.saveModel(1)
@@ -406,7 +406,7 @@ object LDA {
   }
 
   private def updateCounter(graph: Graph[VD, ED], numTopics: Int): Graph[VD, ED] = {
-    val newCounter = graph.aggregateMessages[VD](ctx => {
+    val newCounter = graph.aggregateMessagesHao[VD](ctx => {
       val topics = ctx.attr
       val vector = BSV.zeros[Count](numTopics)
       for (topic <- topics) {
@@ -414,7 +414,7 @@ object LDA {
       }
       ctx.sendToDst(vector)
       ctx.sendToSrc(vector)
-    }, _ + _, TripletFields.EdgeOnly).mapValues(v => {
+    }, _ + _, TripletFields.EdgeOnly, None).mapValues(v => {
       val used = v.used
       if (v.index.length == used) {
         v

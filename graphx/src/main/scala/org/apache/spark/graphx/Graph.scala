@@ -449,6 +449,14 @@ abstract class Graph[VD: ClassTag, ED: ClassTag] protected () extends Serializab
       activeSetOpt: Option[(VertexRDD[_], EdgeDirection)])
     : VertexRDD[A]
 
+  def aggregateMessagesHao[A : ClassTag](
+        sendMsg: EdgeContext[VD, ED, A] => Unit,
+        mergeMsg: (A, A) => A,
+        tripletFields: TripletFields,
+        activeSetOpt: Option[(VertexRDD[_], EdgeDirection)])
+  : VertexRDD[A]
+
+
   /**
    * Joins the vertices with entries in the `table` RDD and merges the results using `mapFunc`.
    * The input table should contain at most one entry for each vertex.  If no entry in `other` is
