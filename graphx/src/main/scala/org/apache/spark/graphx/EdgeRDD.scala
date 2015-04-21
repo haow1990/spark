@@ -102,8 +102,20 @@ object EdgeRDD {
    */
   def fromEdges[ED: ClassTag, VD: ClassTag](edges: RDD[Edge[ED]]): EdgeRDDImpl[ED, VD] = {
     val edgePartitions = edges.mapPartitionsWithIndex { (pid, iter) =>
+      val edges = iter.toArray.sortWith{ case (e1:Edge[ED], e2:Edge[ED]) =>
+        val a1 = Math.min(e1.srcId, e1.dstId)
+        val a2 = Math.max(e1.srcId, e1.dstId)
+        val b1 = Math.min(e2.srcId, e2.dstId)
+        val b2 = Math.max(e2.srcId, e2.dstId)
+        if (a1 < b1)
+          true
+        else if (a1 == b1)
+          a2 < b2
+        else
+          false
+      }
       val builder = new EdgePartitionBuilder[ED, VD]
-      iter.foreach { e =>
+      edges.foreach { e =>
         builder.add(e.srcId, e.dstId, e.attr)
       }
       Iterator((pid, builder.toEdgePartition))
