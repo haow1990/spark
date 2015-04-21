@@ -19,6 +19,7 @@ package org.apache.spark.mllib.clustering
 
 import java.lang.ref.SoftReference
 import java.util.Random
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
 
@@ -653,6 +654,11 @@ object LDA {
     }
   }
 
+  val totalCheck = new AtomicLong(0)
+  val totalMiss = new AtomicLong(0)
+  var cacheCnt = new AtomicInteger(0)
+  var cacheThreshold = 10000
+
   private def wordTable(
     updateFunc: SoftReference[(Double, Table)] => Boolean,
     cacheMap: AppendOnlyMap[VertexId, SoftReference[(Double, Table)]],
@@ -664,10 +670,20 @@ object LDA {
     alpha: Double,
     alphaAS: Double,
     beta: Double): (Double, Table) = {
+    val cnt = cacheCnt.incrementAndGet()
+    if (cnt == cacheThreshold) {
+      cacheCnt.addAndGet(-cacheThreshold)
+      val total = totalCheck.get()
+      val miss = totalMiss.get()
+      val rate = if (total == 0) 1.0 else miss * 1.0 / total
+      println(s"wordTableCache total=${total} miss=${miss}/${rate}")
+    }
+    totalCheck.incrementAndGet()
     val cacheW = cacheMap(termId)
     if (!updateFunc(cacheW)) {
       cacheW.get
     } else {
+      totalMiss.incrementAndGet()
       val sv = wSparse(totalTopicCounter, termTopicCounter,
         numTokens, numTerms, alpha, alphaAS, beta)
       val w = (sv._1, generateAlias(sv._2, sv._1))
