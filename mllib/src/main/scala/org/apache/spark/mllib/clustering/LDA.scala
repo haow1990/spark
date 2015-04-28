@@ -475,8 +475,9 @@ object LDA {
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
     val resultCorpus = updateCounter(corpus, numTopics).cache()
     corpus.unpersist()
-    resultCorpus.vertices.count()
-    resultCorpus.edges.count()
+    val vertexCount = resultCorpus.vertices.count()
+    val edgeCount = resultCorpus.edges.count()
+    println(s"initializeCorpus: vertexCount=$vertexCount edgeCount=$edgeCount")
     edges.unpersist()
     resultCorpus
   }
