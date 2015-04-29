@@ -17,7 +17,6 @@
 
 package org.apache.spark.mllib.clustering
 
-import java.lang.ref.SoftReference
 import java.util.Random
 
 import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
@@ -25,14 +24,13 @@ import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 import org.apache.spark.graphx.impl.GraphImpl
-import org.apache.spark.{HashPartitioner, Logging, Partitioner}
+import org.apache.spark.{Logging, Partitioner}
 import org.apache.spark.mllib.linalg.distributed.{MatrixEntry, RowMatrix}
 import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SV}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.KryoRegistrator
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.SparkContext._
-import org.apache.spark.util.collection.AppendOnlyMap
 import org.apache.spark.util.random.XORShiftRandom
 
 import LDA._
@@ -459,18 +457,18 @@ object LDA {
           val bsv = new BSV[Int](doc.indices, doc.values.map(_.toInt), doc.size)
           initializeEdges(gen, bsv, docId, numTopics, model)
       }
-    })
+    }).sortBy(_.srcId)
     edges.persist(storageLevel)
-    var corpus: Graph[VD, ED] = Graph.fromEdges(edges, null, storageLevel, storageLevel)
+    val corpus: Graph[VD, ED] = Graph.fromEdges(edges, null, storageLevel, storageLevel)
     // degree-based hashing
-    val degrees = corpus.outerJoinVertices(corpus.degrees) { (vid, data, deg) => deg.getOrElse(0) }
-    val numPartitions = edges.partitions.size
-    val partitionStrategy = new DBHPartitioner(numPartitions)
-    val newEdges = degrees.triplets.map { e =>
-      (partitionStrategy.getPartition(e), Edge(e.srcId, e.dstId, e.attr))
-    }.partitionBy(new HashPartitioner(numPartitions)).map(_._2)
-    corpus.unpersist(false)
-    corpus = Graph.fromEdges(newEdges, null, storageLevel, storageLevel)
+//    val degrees = corpus.outerJoinVertices(corpus.degrees) { (vid, data, deg) => deg.getOrElse(0) }
+//    val numPartitions = edges.partitions.size
+//    val partitionStrategy = new DBHPartitioner(numPartitions)
+//    val newEdges = degrees.triplets.map { e =>
+//      (partitionStrategy.getPartition(e), Edge(e.srcId, e.dstId, e.attr))
+//    }.partitionBy(new HashPartitioner(numPartitions)).map(_._2)
+//    corpus.unpersist(false)
+//    corpus = Graph.fromEdges(newEdges, null, storageLevel, storageLevel)
     // end degree-based hashing
     // corpus = corpus.partitionBy(PartitionStrategy.EdgePartition2D)
     val resultCorpus = updateCounter(corpus, numTopics).cache()
