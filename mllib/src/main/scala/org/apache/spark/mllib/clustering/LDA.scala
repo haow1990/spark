@@ -448,7 +448,8 @@ object LDA {
     numTopics: Int,
     storageLevel: StorageLevel,
     computedModel: Broadcast[LDAModel] = null): Graph[VD, ED] = {
-    val edges = docs.mapPartitionsWithIndex((pid, iter) => {
+    val numPartitions = docs.partitions.size
+    val edgesWithIndex = docs.mapPartitionsWithIndex((pid, iter) => {
       val gen = new Random(pid)
       var model: LDAModel = null
       if (computedModel != null) model = computedModel.value
@@ -457,8 +458,10 @@ object LDA {
           val bsv = new BSV[Int](doc.indices, doc.values.map(_.toInt), doc.size)
           initializeEdges(gen, bsv, docId, numTopics, model)
       }
-    }).sortBy(_.srcId)
-    edges.persist(storageLevel)
+    }).sortBy(_.srcId).zipWithIndex.cache
+    val edgesPerPartition = edgesWithIndex.map(_._2).max / numPartitions
+    val edges = edgesWithIndex.map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
+                              .repartition(numPartitions).map(_._2)
     val corpus: Graph[VD, ED] = Graph.fromEdges(edges, null, storageLevel, storageLevel)
     // degree-based hashing
 //    val degrees = corpus.outerJoinVertices(corpus.degrees) { (vid, data, deg) => deg.getOrElse(0) }
@@ -476,7 +479,7 @@ object LDA {
     val vertexCount = resultCorpus.vertices.count()
     val edgeCount = resultCorpus.edges.count()
     println(s"initializeCorpus: vertexCount=$vertexCount edgeCount=$edgeCount")
-    edges.unpersist()
+    edgesWithIndex.unpersist()
     resultCorpus
   }
 
