@@ -482,13 +482,15 @@ object LDA {
       var len = 1L
       val sset = scala.collection.mutable.Set[Long]()
       val aset = scala.collection.mutable.Set[Long]()
+      var edgeLenSum = 1L
       iter.foreach(e => {
+        edgeLenSum += e.attr.length
         len += 1
         sset.add(e.srcId)
         aset.add(e.srcId)
         aset.add(e.dstId)
       })
-      Iterator((pid, len, sset.size, aset.size))
+      Iterator((pid, len, edgeLenSum, sset.size, aset.size))
     }).collect.mkString("\n\t")
     println("HAO EDGE STAT: \n\t" + stat)
     edges.unpersist()
