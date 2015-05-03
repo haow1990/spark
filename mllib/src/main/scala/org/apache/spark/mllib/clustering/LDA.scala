@@ -25,12 +25,12 @@ import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 import org.apache.spark.graphx.impl.GraphImpl
-import org.apache.spark.{HashPartitioner, Logging, Partitioner}
+import org.apache.spark.{SparkEnv, HashPartitioner, Logging, Partitioner}
 import org.apache.spark.mllib.linalg.distributed.{MatrixEntry, RowMatrix}
 import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SV}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.KryoRegistrator
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.storage.{BlockId, StorageLevel}
 import org.apache.spark.SparkContext._
 import org.apache.spark.util.collection.AppendOnlyMap
 import org.apache.spark.util.random.XORShiftRandom
@@ -357,6 +357,7 @@ object LDA {
     alphaAS: Double,
     beta: Double): Graph[VD, ED] = {
     val parts = graph.edges.partitions.size
+    val edgeRddId = graph.edges.id
     val nweGraph = graph.mapTriplets(
       (pid, iter) => {
         val gen = new XORShiftRandom(parts * innerIter + pid)
@@ -369,7 +370,7 @@ object LDA {
         val dData = new Array[Double](numTopics.toInt)
         val t = generateAlias(dv._2, dv._1)
         val tSum = dv._1
-        iter.map {
+        val result = iter.map {
           triplet =>
             val termId = triplet.srcId
             val docId = triplet.dstId
@@ -408,7 +409,10 @@ object LDA {
             }
 
             topics
-        }
+        }.toArray.toIterable.iterator
+        println(s"HAO remove block rdd_${edgeRddId}_$pid")
+        SparkEnv.get.blockManager.removeBlock(BlockId(s"rdd_${edgeRddId}_$pid"))
+        result
       }, TripletFields.All)
     nweGraph
   }
