@@ -462,6 +462,19 @@ object LDA {
     val edgesPerPartition = edgesWithIndex.map(_._2).max / numPartitions
     val edges = edgesWithIndex.map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
                               .repartition(numPartitions).map(_._2)
+    val stat = edges.mapPartitionsWithIndex((pid, iter) => {
+      var len = 0L
+      val sset = scala.collection.mutable.Set[Long]()
+      val aset = scala.collection.mutable.Set[Long]()
+      iter.foreach(e => {
+        len += 1
+        sset.add(e.srcId)
+        aset.add(e.srcId)
+        aset.add(e.dstId)
+      })
+      Iterator((pid, len, sset.size, aset.size))
+    }).collect.mkString("\n\t")
+    println("HAO EDGE STAT: \n\t" + stat)
     val corpus: Graph[VD, ED] = Graph.fromEdges(edges, null, storageLevel, storageLevel)
     // degree-based hashing
 //    val degrees = corpus.outerJoinVertices(corpus.degrees) { (vid, data, deg) => deg.getOrElse(0) }
