@@ -24,7 +24,7 @@ import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, sum => brzSum}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 import org.apache.spark.graphx.impl.GraphImpl
-import org.apache.spark.{Logging, Partitioner}
+import org.apache.spark.{HashPartitioner, Logging, Partitioner}
 import org.apache.spark.mllib.linalg.distributed.{MatrixEntry, RowMatrix}
 import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SV}
 import org.apache.spark.rdd.RDD
@@ -461,7 +461,8 @@ object LDA {
     }).sortBy(_.srcId).zipWithIndex.cache
     val edgesPerPartition = edgesWithIndex.map(_._2).max / numPartitions
     val edges = edgesWithIndex.map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
-                              .repartition(numPartitions).map(_._2)
+                              .partitionBy(new HashPartitioner(numPartitions))
+                              .map(_._2)
     val stat = edges.mapPartitionsWithIndex((pid, iter) => {
       var len = 0L
       val sset = scala.collection.mutable.Set[Long]()
