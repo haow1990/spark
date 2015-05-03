@@ -478,6 +478,19 @@ object LDA {
     val vertexCount = resultCorpus.vertices.count()
     val edgeCount = resultCorpus.edges.count()
     println(s"initializeCorpus: vertexCount=$vertexCount edgeCount=$edgeCount")
+    val stat = resultCorpus.edges.mapPartitionsWithIndex((pid, iter) => {
+      var len = 1L
+      val sset = scala.collection.mutable.Set[Long]()
+      val aset = scala.collection.mutable.Set[Long]()
+      iter.foreach(e => {
+        len += 1
+        sset.add(e.srcId)
+        aset.add(e.srcId)
+        aset.add(e.dstId)
+      })
+      Iterator((pid, len, sset.size, aset.size))
+    }).collect.mkString("\n\t")
+    println("HAO EDGE STAT: \n\t" + stat)
     edges.unpersist()
     resultCorpus
   }
