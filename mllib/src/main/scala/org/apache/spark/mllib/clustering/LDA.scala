@@ -458,7 +458,7 @@ object LDA {
           val bsv = new BSV[Int](doc.indices, doc.values.map(_.toInt), doc.size)
           initializeEdges(gen, bsv, docId, numTopics, model)
       }
-    }).sortBy(_.srcId).zipWithIndex.cache
+    }).sortBy(e => (e.srcId, e.dstId)).zipWithIndex.cache
     val edgesPerPartition = edgesWithIndex.map(_._2).max / numPartitions
     val edges = edgesWithIndex.map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
                               .partitionBy(new HashPartitioner(numPartitions))
