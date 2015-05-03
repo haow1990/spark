@@ -449,7 +449,7 @@ object LDA {
     storageLevel: StorageLevel,
     computedModel: Broadcast[LDAModel] = null): Graph[VD, ED] = {
     val numPartitions = docs.partitions.size
-    val edgesWithIndex = docs.mapPartitionsWithIndex((pid, iter) => {
+    val rawEdges = docs.mapPartitionsWithIndex((pid, iter) => {
       val gen = new Random(pid)
       var model: LDAModel = null
       if (computedModel != null) model = computedModel.value
@@ -458,12 +458,14 @@ object LDA {
           val bsv = new BSV[Int](doc.indices, doc.values.map(_.toInt), doc.size)
           initializeEdges(gen, bsv, docId, numTopics, model)
       }
-    }).sortBy(e => (e.srcId, e.dstId)).zipWithIndex.cache
-    val edgesPerPartition = edgesWithIndex.map(_._2).max / numPartitions
-    val edges = edgesWithIndex.map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
-                              .partitionBy(new HashPartitioner(numPartitions))
-                              .map(_._2)
-    val stat = edges.mapPartitionsWithIndex((pid, iter) => {
+    }).cache
+//    val edgesPerPartition = rawEdges.count / numPartitions
+//    val edges = rawEdges.zipWithIndex
+//                        .map(edgeIndex => (edgeIndex._2 / edgesPerPartition, edgeIndex._1))
+//                        .partitionBy(new HashPartitioner(numPartitions))
+//                        .map(_._2).cache
+//    rawEdges.unpersist(false)
+    val stat = rawEdges.mapPartitionsWithIndex((pid, iter) => {
       var len = 0L
       val sset = scala.collection.mutable.Set[Long]()
       val aset = scala.collection.mutable.Set[Long]()
@@ -476,7 +478,7 @@ object LDA {
       Iterator((pid, len, sset.size, aset.size))
     }).collect.mkString("\n\t")
     println("HAO EDGE STAT: \n\t" + stat)
-    val corpus: Graph[VD, ED] = Graph.fromEdges(edges, null, storageLevel, storageLevel)
+    val corpus: Graph[VD, ED] = Graph.fromEdges(rawEdges, null, storageLevel, storageLevel)
     // degree-based hashing
 //    val degrees = corpus.outerJoinVertices(corpus.degrees) { (vid, data, deg) => deg.getOrElse(0) }
 //    val numPartitions = edges.partitions.size
@@ -493,7 +495,7 @@ object LDA {
     val vertexCount = resultCorpus.vertices.count()
     val edgeCount = resultCorpus.edges.count()
     println(s"initializeCorpus: vertexCount=$vertexCount edgeCount=$edgeCount")
-    edgesWithIndex.unpersist()
+    rawEdges.unpersist(false)
     resultCorpus
   }
 
