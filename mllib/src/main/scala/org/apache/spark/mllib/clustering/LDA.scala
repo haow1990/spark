@@ -357,7 +357,8 @@ object LDA {
     alphaAS: Double,
     beta: Double): Graph[VD, ED] = {
     val parts = graph.edges.partitions.size
-    val edgeRddId = graph.edges.id
+    val edgeRddId1 = graph.edges.firstParent.id
+    val edgeRddId2 = graph.edges.firstParent.firstParent.id
     val nweGraph = graph.mapTriplets(
       (pid, iter) => {
         val gen = new XORShiftRandom(parts * innerIter + pid)
@@ -410,8 +411,10 @@ object LDA {
 
             topics
         }.toArray.toIterable.iterator
-        println(s"HAO remove block rdd_${edgeRddId}_$pid")
-        SparkEnv.get.blockManager.removeBlock(BlockId(s"rdd_${edgeRddId}_$pid"))
+        println(s"HAO remove block rdd_${edgeRddId1}_$pid")
+        println(s"HAO remove block rdd_${edgeRddId2}_$pid")
+        SparkEnv.get.blockManager.removeBlock(BlockId(s"rdd_${edgeRddId1}_$pid"))
+        SparkEnv.get.blockManager.removeBlock(BlockId(s"rdd_${edgeRddId2}_$pid"))
         result
       }, TripletFields.All)
     nweGraph
