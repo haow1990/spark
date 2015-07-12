@@ -182,6 +182,20 @@ class LDA private[mllib](
       val endAt = System.nanoTime()
       val useTime = (endAt - startedAt) / 1e9
       logInfo(s"Gibbs sampling use time  $iter:              $useTime")
+
+      // stat vertex data density
+      val stat = corpus.vertices.mapPartitions { iter =>
+        var total = 0L
+        var nzero = 0L
+        iter.filter(_._1 >= 0).foreach { case (vid, vd:BSV[Count]) =>
+          total += vd.size
+          nzero += vd.activeIterator.count(_._2 != 0)
+        }
+        Iterator((total, nzero))
+      }.collect
+      val total = stat.map(_._1).sum
+      val nzero = stat.map(_._2).sum
+      logInfo(s"HAO word data density: $nzero/$total(${nzero * 1.0 / total}})")
     }
   }
 
